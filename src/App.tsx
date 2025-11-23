@@ -112,7 +112,7 @@ const App: React.FC = () => {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Phone className="w-6 h-6" />
-            <h1 className="text-xl font-bold tracking-tight">Smart Call List</h1>
+            <h1 className="text-xl font-bold tracking-tight">Watch Night Schedule</h1>
           </div>
           {status === 'success' && (
             <button 
@@ -125,7 +125,7 @@ const App: React.FC = () => {
           )}
         </div>
         <div className="flex items-center justify-between mt-1">
-          <p className="text-teal-100 text-xs">Offline List Parser</p>
+          <p className="text-teal-100 text-xs">Call Made Easy</p>
         </div>
       </header>
 
