@@ -1,10 +1,12 @@
 {
-  "name": "Smart Call List",
-  "short_name": "Call List",
-  "start_url": "./",
+  "name": "Smart Call",
+  "short_name": "WCall",
+  "start_url": "/jwwatch/index.html",
+  "scope": "/jwwatch/",
   "display": "standalone",
-  "background_color": "#f3f4f6",
+  "background_color": "#0d9488",
   "theme_color": "#0d9488",
+  "description": "Offline capable Call List parser and dialer",
   "orientation": "portrait",
   "icons": [
     {
