@@ -4,9 +4,11 @@ import { ContactCard } from './components/ContactCard';
 import { DateFilter } from './components/DateFilter';
 import { ColumnSelector } from './components/ColumnSelector';
 import { parseExcelFile, parseWordFile, getHeaders, mapDataToSchema } from './services/fileService';
-import type {ParsedRecord, ProcessingStatus, SchemaMapping, ExcelRow} from './types';
-import { Phone, Calendar, Loader2, AlertCircle, RefreshCw, FileText } from 'lucide-react';
-import { format, isValid, isSameDay } from 'date-fns';
+import type { ParsedRecord, ProcessingStatus, SchemaMapping, ExcelRow, StorageData } from './types';
+import { Phone, Calendar, Loader2, AlertCircle, RefreshCw, FileText, Save, Trash2, CheckCircle2 } from 'lucide-react';
+import { format, isValid, isSameDay, parseISO } from 'date-fns';
+
+const STORAGE_KEY = 'smart_call_list_data';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<ProcessingStatus>('idle');
@@ -14,10 +16,32 @@ const App: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
+  const [isSaved, setIsSaved] = useState<boolean>(false);
   
   // State for mapping phase
   const [rawRows, setRawRows] = useState<ExcelRow[]>([]);
   const [availableHeaders, setAvailableHeaders] = useState<string[]>([]);
+
+    useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed: StorageData = JSON.parse(saved);
+        // Revive dates
+        const revivedRecords = parsed.records.map(r => ({
+          ...r,
+          date: r.date ? parseISO(r.date as any) : null
+        }));
+        setRecords(revivedRecords);
+        setFileName(parsed.fileName);
+        setStatus('success');
+        setIsSaved(true);
+      } catch (e) {
+        console.error("Failed to load saved data", e);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
 
   // Derived state: Unique dates from records
   const availableDates = useMemo(() => {
@@ -54,6 +78,7 @@ const App: React.FC = () => {
     setStatus('analyzing');
     setFileName(file.name);
     setErrorMsg('');
+     setIsSaved(false);
 
     try {
       let data: ExcelRow[] = [];
@@ -97,13 +122,38 @@ const App: React.FC = () => {
     }
   };
 
-  const handleReset = () => {
-    setRecords([]);
-    setRawRows([]);
-    setStatus('idle');
-    setFileName('');
-    setSelectedDate(null);
+  const handleSaveToLocal = () => {
+    const dataToSave: StorageData = {
+      records,
+      fileName,
+      savedAt: new Date().toISOString()
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+      setIsSaved(true);
+    } catch (e) {
+      alert("Could not save to local storage. File might be too large.");
+    }
   };
+
+
+  const handleReset = () => {
+      setRecords([]);
+      setRawRows([]);
+      setStatus('idle');
+      setFileName('');
+      setSelectedDate(null);
+      setIsSaved(false);
+    };
+
+  const handleClearLocal = () => {
+    if (confirm("Clear saved data from this device?")) {
+      localStorage.removeItem(STORAGE_KEY);
+      handleReset();
+    }
+
+
+  
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto border-x border-gray-200 shadow-xl">
@@ -114,15 +164,36 @@ const App: React.FC = () => {
             <Phone className="w-6 h-6" />
             <h1 className="text-xl font-bold tracking-tight">Watch Night Schedule</h1>
           </div>
-          {status === 'success' && (
-            <button 
-              onClick={handleReset}
-              className="p-2 bg-teal-700 rounded-full hover:bg-teal-800 transition-colors"
-              aria-label="Reset"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          )}
+                    <div className="flex items-center gap-2">
+            {status === 'success' && (
+              <>
+                {!isSaved ? (
+                  <button 
+                    onClick={handleSaveToLocal}
+                    className="p-2 bg-teal-500 rounded-full hover:bg-teal-400 transition-colors flex items-center justify-center"
+                    title="Save to device"
+                  >
+                    <Save className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleClearLocal}
+                    className="p-2 bg-teal-700 rounded-full hover:bg-teal-800 transition-colors flex items-center justify-center"
+                    title="Clear saved data"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+                <button 
+                  onClick={handleReset}
+                  className="p-2 bg-teal-700 rounded-full hover:bg-teal-800 transition-colors"
+                  aria-label="Reset"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
         </div>
         <div className="flex items-center justify-between mt-1">
           <p className="text-teal-100 text-xs">Call Made Easy</p>
@@ -182,12 +253,32 @@ const App: React.FC = () => {
 
         {status === 'success' && (
           <div className="flex flex-col h-full">
+
+             <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-xs text-gray-400 truncate max-w-[200px]">{fileName}</span>
+                {isSaved && (
+                  <span className="text-[10px] text-teal-600 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-2.5 h-2.5" /> Saved to device
+                  </span>
+                )}
+              </div>
+              {!isSaved && (
+                 <button 
+                  onClick={handleSaveToLocal}
+                  className="text-[10px] bg-teal-50 text-teal-700 px-2 py-1 rounded border border-teal-100 font-bold uppercase tracking-wider hover:bg-teal-100 transition-colors"
+                >
+                  Save to Device
+                </button>
+              )}
+            </div>
+
             {/* Date Selector Bar - Only show if we actually have dates */}
             {availableDates.length > 0 && (
               <div className="bg-white border-b border-gray-200 pt-2 pb-2">
-                 <div className="px-4 mb-2 flex items-center justify-between">
-                   <span className="text-xs font-bold text-teal-700 uppercase tracking-wider flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
+                 <div className="px-4 mb-2 flex items-center gap-2">
+                   <Calendar className="w-3 h-3 text-teal-600" />
+                   <span className="text-xs font-bold text-teal-700 uppercase tracking-wider">
                       {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select Date'}
                    </span>
                    <span className="text-xs text-gray-400 truncate max-w-[120px]">{fileName}</span>
@@ -201,15 +292,15 @@ const App: React.FC = () => {
             )}
 
             {/* Records List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 scroll-smooth">
+             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 scroll-smooth no-scrollbar">
               {filteredRecords.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-gray-400">
                   <Calendar className="w-10 h-10 mb-2 opacity-50" />
-                  <p>{availableDates.length === 0 ? 'Records imported' : 'No records for this date'}</p>
+                  <p>{availableDates.length === 0 ? 'List imported' : 'No records for this date'}</p>
                 </div>
               ) : (
                 filteredRecords.map((record, index) => (
-                  <ContactCard key={index} record={record} />
+                   <ContactCard key={record.id || index} record={record} />
                 ))
               )}
               <div className="h-8" /> {/* Bottom spacer */}

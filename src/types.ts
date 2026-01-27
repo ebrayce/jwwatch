@@ -20,3 +20,10 @@ export type ProcessingStatus = 'idle' | 'analyzing' | 'mapping' | 'success' | 'e
 export interface ExcelRow {
   [key: string]: any;
 }
+
+
+export interface StorageData {
+  records: ParsedRecord[];
+  fileName: string;
+  savedAt: string;
+}
