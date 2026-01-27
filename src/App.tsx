@@ -151,6 +151,7 @@ const App: React.FC = () => {
       localStorage.removeItem(STORAGE_KEY);
       handleReset();
     }
+  }
 
 
   
